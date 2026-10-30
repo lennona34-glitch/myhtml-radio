@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>XISO Tool</title>
+
+        <!-- Style dependencies -->
+        <link href="https://unpkg.com/normalize.css@^8.0.1" rel="stylesheet" />
+
+        <style>
+        body {
+            background: #d3d3d3;
+        }
+
+        .xiso_bg_dark {
+            background: #222;
+        }
+
+        .xiso_main {
+            width: 50%;
+            min-height: 100vh;
+            margin: auto;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
+            gap: 6px;
+            padding: 15px;
+            background: #eeeeee;
+            border-style: solid;
+            border-width: 0px 2px 0px 2px;
+            border-color: #8dc103;
+        }
+
+        @media screen and (max-width: 992px) {
+            .xiso_main {
+                width: 100%;
+            }
+        }
+
+        @media screen and (min-width: 992px) {
+            .xiso_main {
+                min-width: 992px
+            }
+        }
+
+        .xiso_dark {
+            background: #303030;
+        }
+        </style>
+
+        <!-- Blueprint stylesheets -->
+        <link href="https://unpkg.com/@blueprintjs/icons@^3.54.0/lib/css/blueprint-icons.css" rel="stylesheet" />
+        <link href="https://unpkg.com/@blueprintjs/core@^3.54.0/lib/css/blueprint.css" rel="stylesheet" />
+    <link rel="modulepreload" href="./xdvdfs-web-d07d932d0498a91a.js"><link rel="modulepreload" href="./snippets/xdvdfs-web-81e252f1b1e6aee5/src/picker/tauri.js"><link rel="modulepreload" href="./snippets/xdvdfs-web-81e252f1b1e6aee5/src/ops/tauri.js"><link rel="modulepreload" href="./snippets/xdvdfs-web-81e252f1b1e6aee5/src/picker/browser.js"><link rel="preload" href="./xdvdfs-web-d07d932d0498a91a_bg.wasm" as="fetch" type="application/wasm"></head>
+    <body>
+<script type="module" nonce="0LbbBsw/qEV2hwkil5DXHA==">
+import init, * as bindings from "./xdvdfs-web-d07d932d0498a91a.js";
+const wasm = await init({ module_or_path: "./xdvdfs-web-d07d932d0498a91a_bg.wasm" });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script></body>
+</html>

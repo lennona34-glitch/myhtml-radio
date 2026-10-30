@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cover Art & Image Resizer</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px; font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
+  .wrap { max-width: 720px; margin: 0 auto; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+  h2 { margin: 0 0 4px; font-size: 18px; }
+  p { margin: 0 0 14px; font-size: 12.5px; color: #94a3b8; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .presets button { background: #334155; color: #e2e8f0; border: 0; padding: 6px 10px; border-radius: 6px; font-size: 11.5px; cursor: pointer; font-weight: 600; }
+  .presets button:hover { background: #4f46e5; color: #fff; }
+  .inputs { display: flex; gap: 10px; margin-bottom: 12px; }
+  .inputs div { flex: 1; }
+  label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+  input[type=number], input[type=file] { width: 100%; background: #0f172a; border: 1px solid #475569; color: #fff; padding: 8px; border-radius: 6px; }
+  canvas { width: 100%; max-height: 240px; object-fit: contain; background: #090d16; border: 1px solid #334155; border-radius: 8px; display: block; margin-bottom: 12px; }
+  .dl { width: 100%; background: #10b981; color: #fff; border: 0; padding: 11px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>🖼️ Cover Art & Quick Image Resizer</h2>
+    <p>Resize box art, thumbnails, icons, and photos 100% locally in your browser.</p>
+    <input type="file" id="f" accept="image/*" style="margin-bottom:12px;">
+    <div class="presets">
+      <button data-w="512" data-h="512">Icon (512×512)</button>
+      <button data-w="600" data-h="850">Box Cover Art (600×850)</button>
+      <button data-w="1280" data-h="720">HD Thumbnail (1280×720)</button>
+      <button data-w="256" data-h="256">Small Avatar (256×256)</button>
+    </div>
+    <div class="inputs">
+      <div><label>Width (px)</label><input type="number" id="w" value="600"></div>
+      <div><label>Height (px)</label><input type="number" id="h" value="850"></div>
+    </div>
+    <canvas id="c" width="600" height="360"></canvas>
+    <button class="dl" id="dl">⬇ Download Resized PNG</button>
+  </div>
+<script>
+  const f = document.getElementById('f'), c = document.getElementById('c'), w = document.getElementById('w'), h = document.getElementById('h');
+  const ctx = c.getContext('2d');
+  let img = null;
+  function drawPlaceholder() {
+    ctx.fillStyle = '#090d16'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#64748b'; ctx.font = '14px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('Choose an image above to preview & resize (' + w.value + '×' + h.value + ')', c.width / 2, c.height / 2);
+  }
+  drawPlaceholder();
+  function render() {
+    c.width = Math.max(16, +w.value || 600);
+    c.height = Math.max(16, +h.value || 400);
+    if (!img) { drawPlaceholder(); return; }
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+  }
+  f.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = (ev) => {
+      img = new Image();
+      img.onload = () => { w.value = img.width; h.value = img.height; render(); };
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(file);
+  };
+  w.oninput = render; h.oninput = render;
+  document.querySelectorAll('[data-w]').forEach(b => {
+    b.onclick = () => { w.value = b.dataset.w; h.value = b.dataset.h; render(); };
+  });
+  document.getElementById('dl').onclick = () => {
+    const a = document.createElement('a');
+    a.download = 'resized-' + w.value + 'x' + h.value + '.png';
+    a.href = c.toDataURL('image/png');
+    a.click();
+  };
+</script>
+</body>
+</html>

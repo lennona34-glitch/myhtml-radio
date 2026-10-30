@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hex & Binary Inspector</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px; font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
+  .top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; background: #1e293b; padding: 14px 18px; border-radius: 12px; border: 1px solid #334155; }
+  h2 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+  .meta { font-size: 12px; color: #94a3b8; }
+  .dropzone { border: 2px dashed #475569; background: #1e293b; border-radius: 10px; padding: 16px; text-align: center; cursor: pointer; margin-bottom: 14px; transition: .15s; }
+  .dropzone:hover { border-color: #6366f1; background: #26334d; }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  input[type=text], input[type=number] { background: #0f172a; border: 1px solid #334155; color: #fff; padding: 7px 10px; border-radius: 6px; font-size: 12px; }
+  button { background: #4f46e5; color: #fff; border: 0; padding: 7px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px; }
+  button.sec { background: #334155; }
+  .grid { display: grid; grid-template-columns: 1fr 240px; gap: 14px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .hex-box { background: #090d16; border: 1px solid #334155; border-radius: 10px; padding: 14px; font-family: 'Cascadia Code', Consolas, monospace; font-size: 12.5px; line-height: 1.65; overflow-x: auto; white-space: pre; min-height: 320px; color: #cbd5e1; }
+  .offset { color: #64748b; user-select: none; }
+  .ascii { color: #34d399; }
+  .info-card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px; font-size: 12.5px; }
+  .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #334155; }
+  .info-row:last-child { border-bottom: 0; }
+  .badge { background: rgba(16,185,129,0.18); color: #34d399; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 11px; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h2>🔬 Hex & Binary File Inspector</h2>
+      <div class="meta">Inspect headers, magic bytes, offsets & ASCII of any ISO, ROM, EEPROM, or binary file locally</div>
+    </div>
+    <span class="badge">100% LOCAL</span>
+  </div>
+  <label class="dropzone" id="dropLabel">
+    <input type="file" id="fileInp" style="display:none">
+    <strong>📂 Click to open any file</strong> (or drag & drop here) — Instant zero-upload inspection
+  </label>
+  <div class="controls">
+    <label style="font-size:12px;color:#94a3b8;">Offset (Hex/Dec):</label>
+    <input type="text" id="offsetInp" value="0x0" style="width:110px;">
+    <button id="goBtn">Jump</button>
+    <button class="sec" id="prevBtn">◀ Prev 512 B</button>
+    <button class="sec" id="nextBtn">Next 512 B ▶</button>
+    <button class="sec" id="sampleBtn">Load Sample Xbox/XISO Header</button>
+  </div>
+  <div class="grid">
+    <div class="hex-box" id="hexOut">Select a file above or click "Load Sample Xbox/XISO Header" to inspect bytes...</div>
+    <div class="info-card">
+      <h4 style="margin:0 0 10px;color:#fff;font-size:13px;">File Telemetry</h4>
+      <div class="info-row"><span>Name:</span><strong id="iName">—</strong></div>
+      <div class="info-row"><span>Size:</span><strong id="iSize">—</strong></div>
+      <div class="info-row"><span>Magic (ASCII):</span><strong id="iMagic" style="color:#38bdf8;">—</strong></div>
+      <div class="info-row"><span>First 4 Bytes:</span><strong id="iHex4" style="font-family:monospace;">—</strong></div>
+      <div class="info-row"><span>Viewing Offset:</span><strong id="iOff">0x00000000</strong></div>
+    </div>
+  </div>
+<script>
+  let currentFile = null, sampleBytes = null, currentOffset = 0;
+  const PAGE = 512;
+  const hexOut = document.getElementById('hexOut');
+
+  function renderBytes(u8, totalSize, name) {
+    document.getElementById('iName').textContent = name.slice(0, 20);
+    document.getElementById('iSize').textContent = totalSize.toLocaleString() + ' bytes';
+    document.getElementById('iOff').textContent = '0x' + currentOffset.toString(16).toUpperCase().padStart(8, '0');
+    let lines = [];
+    for (let i = 0; i < u8.length; i += 16) {
+      const slice = u8.subarray(i, i + 16);
+      const off = (currentOffset + i).toString(16).toUpperCase().padStart(8, '0');
+      let hex = '', ascii = '';
+      for (let j = 0; j < 16; j++) {
+        if (j < slice.length) {
+          const b = slice[j];
+          hex += b.toString(16).toUpperCase().padStart(2, '0') + (j === 7 ? '  ' : ' ');
+          ascii += (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.';
+        } else {
+          hex += '   ' + (j === 7 ? ' ' : '');
+        }
+      }
+      lines.push('<span class="offset">' + off + '</span>  ' + hex + ' <span class="ascii">|' + ascii.replace(/[<>&]/g, '.') + '|</span>');
+    }
+    hexOut.innerHTML = lines.join('\n') || '(Empty)';
+  }
+
+  async function updateView() {
+    if (sampleBytes) {
+      const sub = sampleBytes.subarray(currentOffset, currentOffset + PAGE);
+      renderBytes(sub, sampleBytes.length, 'sample_xiso_header.bin');
+      return;
+    }
+    if (!currentFile) return;
+    const slice = currentFile.slice(currentOffset, currentOffset + PAGE);
+    const buf = await slice.arrayBuffer();
+    const u8 = new Uint8Array(buf);
+    if (currentOffset === 0 && u8.length >= 4) {
+      document.getElementById('iHex4').textContent = [...u8.subarray(0, 4)].map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      document.getElementById('iMagic').textContent = [...u8.subarray(0, 8)].map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('');
+    }
+    renderBytes(u8, currentFile.size, currentFile.name);
+  }
+
+  document.getElementById('fileInp').onchange = (e) => {
+    if (!e.target.files[0]) return;
+    currentFile = e.target.files[0];
+    sampleBytes = null;
+    currentOffset = 0;
+    updateView();
+  };
+
+  document.getElementById('goBtn').onclick = () => {
+    const val = document.getElementById('offsetInp').value.trim();
+    const parsed = val.startsWith('0x') ? parseInt(val, 16) : parseInt(val, 10);
+    if (!isNaN(parsed) && parsed >= 0) { currentOffset = parsed; updateView(); }
+  };
+  document.getElementById('prevBtn').onclick = () => { currentOffset = Math.max(0, currentOffset - PAGE); updateView(); };
+  document.getElementById('nextBtn').onclick = () => { currentOffset += PAGE; updateView(); };
+  document.getElementById('sampleBtn').onclick = () => {
+    sampleBytes = new Uint8Array(512);
+    const sig = 'MICROSOFT*XBOX*MEDIA';
+    for (let i = 0; i < sig.length; i++) sampleBytes[i] = sig.charCodeAt(i);
+    sampleBytes[20] = 0x01; sampleBytes[24] = 0x00; sampleBytes[25] = 0x08;
+    for (let i = 32; i < 512; i++) sampleBytes[i] = (i * 7) & 0xff;
+    currentOffset = 0;
+    document.getElementById('iHex4').textContent = '4D 49 43 52';
+    document.getElementById('iMagic').textContent = 'MICROSOF';
+    updateView();
+  };
+  document.getElementById('sampleBtn').click();
+</script>
+</body>
+</html>
